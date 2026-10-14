@@ -17,6 +17,8 @@ FORBIDDEN_SOURCE = {
 
 EXPECTED_CLASSES = {
     "io/github/iamthecodedecoded/banktabshortcuts/BankTabNavigator.class",
+    "io/github/iamthecodedecoded/banktabshortcuts/BankTabNumbersOverlay.class",
+    "io/github/iamthecodedecoded/banktabshortcuts/BankTabShortcutsConfig.class",
     "io/github/iamthecodedecoded/banktabshortcuts/BankTabShortcutsPlugin.class",
 }
 

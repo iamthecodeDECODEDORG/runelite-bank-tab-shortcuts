@@ -7,22 +7,35 @@ bank tabs.
 
 | Shortcut | Action |
 |---|---|
+| `Ctrl+0` | Open All (all items), even without numbered tabs |
 | `Ctrl+1` through `Ctrl+9` | Open that numbered bank tab when it exists |
 | `Ctrl+Tab` | Open the next existing numbered bank tab, wrapping at the end |
 | `Ctrl+Shift+Tab` | Open the previous existing numbered bank tab, wrapping at the start |
 
-The all-items view is intentionally not numbered. Cycling from all items enters tab 1 going forward
+All is tab 0. Cycling still visits existing numbered tabs; from All it enters tab 1 going forward
 or the highest existing tab going backward. The plugin ignores every shortcut while the bank is
 closed, while the bank's item area is hidden, or when the requested numbered tab does not exist.
 Number shortcuts work from the top number row and the numeric keypad (with Num Lock on).
 Version `1.0.2` also recognizes the original number keys when RuneLite's Key Remapping plugin
 rewrites them to F1-F9, so Remap F-keys can remain enabled.
 
+## Optional Tab Numbers
+
+Version `1.1.0` adds **Show tab numbers** in the plugin settings (off by default). Enable it for small
+labels at the top-left of native tabs: `0` on All, then `1` through `9` on existing tabs. Adjust
+**Number color** (including opacity) and **Number size** (`8`–`16`, default `10`). Changes apply
+without restarting. Labels use a muted color and a contained one-pixel shadow; they never handle
+mouse input or replace tab icons. Missing tabs and the New tab button have no label.
+
+The renderer follows each native widget's canvas bounds, clips text inside the tab, and stays
+hidden when the bank or native tabs are hidden. It does not number Bank Tags sidebar tabs.
+
 ## Safety And Scope
 
-The plugin only registers a RuneLite key listener, reads the native bank interface and tab-count
+The plugin registers a RuneLite key listener and optional overlay, reads the native bank interface and tab-count
 varbits, selects a native tab, closes an active bank search input, and asks the bank's own widget
-listener to rebuild the item view. It does not send network requests, read or write files, inspect
+listener to rebuild the item view. RuneLite stores the three display settings through its own
+configuration API. The plugin does not send network requests, read or write files directly, inspect
 credentials or account profiles, synthesize operating-system input, invoke menu or packet actions,
 or automate gameplay. Every action begins with an explicit user keypress and only works inside the
 open bank interface.
@@ -71,7 +84,7 @@ RuneLite `KeyManager` on AWT's event-dispatch thread.
 | Missing rebuild listener | Log `BTS_BANK_REBUILD_LISTENER_MISSING`; preserve tab | No tab mutation or rebuild |
 | Shipped artifact | Run the same contract against production JAR classes | Separate `packagedTest` task asserts JAR code source |
 
-There is no persisted plugin state to migrate. Plugin Hub users receive the fix after the manifest
+There is no existing plugin state to migrate. Plugin Hub users receive the update after the manifest
 update is accepted. These tests exercise the threading and navigation contract using a simulated
 bank; a logged-in live-bank test remains a separate check.
 

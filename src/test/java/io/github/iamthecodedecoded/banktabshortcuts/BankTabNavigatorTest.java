@@ -6,10 +6,20 @@ import java.awt.event.KeyEvent;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class BankTabNavigatorTest
 {
 	private static final Canvas SOURCE = new Canvas();
+
+	@Test
+	public void zeroSelectsAllFromEitherNumberRow()
+	{
+		assertNotEquals(0, BankTabNavigator.NONE);
+		assertEquals(0, BankTabNavigator.requestFor(key(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK)));
+		assertEquals(0, BankTabNavigator.requestFor(key(KeyEvent.VK_NUMPAD0, InputEvent.CTRL_DOWN_MASK)));
+		assertEquals(0, BankTabNavigator.targetFor(0, 4, counts()));
+	}
 
 	@Test
 	public void mapsEveryNumberedShortcut()

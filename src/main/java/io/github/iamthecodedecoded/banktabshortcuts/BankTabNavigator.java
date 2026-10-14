@@ -4,7 +4,7 @@ import java.awt.event.KeyEvent;
 
 final class BankTabNavigator
 {
-	static final int NONE = 0;
+	static final int NONE = -1;
 	static final int NEXT = 10;
 	static final int PREVIOUS = -10;
 	static final int TAB_COUNT = 9;
@@ -33,13 +33,13 @@ final class BankTabNavigator
 		}
 
 		if (!event.isShiftDown()
-			&& keyCode >= KeyEvent.VK_1
+			&& keyCode >= KeyEvent.VK_0
 			&& keyCode <= KeyEvent.VK_9)
 		{
 			return keyCode - KeyEvent.VK_0;
 		}
 		if (!event.isShiftDown()
-			&& keyCode >= KeyEvent.VK_NUMPAD1
+			&& keyCode >= KeyEvent.VK_NUMPAD0
 			&& keyCode <= KeyEvent.VK_NUMPAD9)
 		{
 			return keyCode - KeyEvent.VK_NUMPAD0;
@@ -53,6 +53,11 @@ final class BankTabNavigator
 		if (tabItemCounts == null || tabItemCounts.length != TAB_COUNT)
 		{
 			throw new IllegalArgumentException("tabItemCounts must contain exactly nine entries");
+		}
+
+		if (request == 0)
+		{
+			return 0; // The all-items view exists even without numbered tabs.
 		}
 
 		if (request >= 1 && request <= TAB_COUNT)

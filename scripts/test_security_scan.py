@@ -21,6 +21,8 @@ with tempfile.TemporaryDirectory() as temp:
     jar = root / "plugin.jar"
     expected = {
         "io/github/iamthecodedecoded/banktabshortcuts/BankTabNavigator.class",
+        "io/github/iamthecodedecoded/banktabshortcuts/BankTabNumbersOverlay.class",
+        "io/github/iamthecodedecoded/banktabshortcuts/BankTabShortcutsConfig.class",
         "io/github/iamthecodedecoded/banktabshortcuts/BankTabShortcutsPlugin.class",
     }
     write_jar(jar, expected)

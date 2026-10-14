@@ -1,6 +1,7 @@
 package io.github.iamthecodedecoded.banktabshortcuts;
 
 import com.google.inject.Inject;
+import com.google.inject.Provides;
 import java.awt.event.KeyEvent;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
@@ -10,17 +11,19 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @PluginDescriptor(
 	name = "Bank Tab Shortcuts",
-	description = "Navigate native bank tabs with Ctrl+1 through Ctrl+9 and Ctrl+Tab shortcuts",
+	description = "Navigate native bank tabs with Ctrl+0 through Ctrl+9, Ctrl+Tab, and optional tab numbers",
 	tags = {"bank", "tabs", "keyboard", "hotkeys", "shortcuts"}
 )
 public class BankTabShortcutsPlugin extends Plugin implements KeyListener
@@ -49,6 +52,18 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 	@Inject
 	private KeyManager keyManager;
 
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private BankTabNumbersOverlay numbersOverlay;
+
+	@Provides
+	BankTabShortcutsConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(BankTabShortcutsConfig.class);
+	}
+
 	// Only immutable, client-thread-produced data crosses into the AWT key listener.
 	private volatile int availableTabs;
 	private volatile Object activation;
@@ -59,6 +74,7 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 		availableTabs = 0;
 		activation = new Object();
 		keyManager.registerKeyListener(this);
+		overlayManager.add(numbersOverlay);
 	}
 
 	@Override
@@ -67,6 +83,7 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 		activation = null;
 		availableTabs = 0;
 		keyManager.unregisterKeyListener(this);
+		overlayManager.remove(numbersOverlay);
 	}
 
 	@Subscribe
@@ -83,6 +100,7 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 			Widget bankItems = client.getWidget(InterfaceID.Bankmain.ITEMS);
 			if (bankItems != null && !bankItems.isHidden())
 			{
+				tabs = 1; // Bit zero is the all-items view.
 				int[] counts = readTabItemCounts();
 				for (int i = 0; i < counts.length; i++)
 				{
@@ -121,7 +139,11 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 			return;
 		}
 
-		if (request >= 1 && request <= BankTabNavigator.TAB_COUNT && (tabs & (1 << request)) == 0)
+		if (request >= 0 && request <= BankTabNavigator.TAB_COUNT && (tabs & (1 << request)) == 0)
+		{
+			return;
+		}
+		if ((request == BankTabNavigator.NEXT || request == BankTabNavigator.PREVIOUS) && (tabs & ~1) == 0)
 		{
 			return;
 		}

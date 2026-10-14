@@ -9,3 +9,10 @@ from the RuneLite client. No RuneLite source code is copied into this project.
 - License: BSD 2-Clause
 
 The Gradle wrapper is distributed by the Gradle project under the Apache License 2.0.
+
+## Native Tab Layout Reference (2026-10-14)
+
+The native tab child mapping (All at child 10; numbered tabs at children 11–19) was checked against
+[Bank Tab Names](https://github.com/Psyda/bank-tab-names/blob/a8cd8e90a4cdd250cee3b1d4d45e48d0ff8cc9d4/src/main/java/psyda/banktabnames/BankTabNamesPlugin.java),
+BSD 3-Clause, as an API/layout reference. No source code was copied. This plugin uses RuneLite's
+existing overlay, font, and configuration APIs rather than adding a runtime dependency.

@@ -19,12 +19,13 @@ dependencies {
     compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
     testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
 }
 
 group = 'io.github.iamthecodedecoded'
-version = '1.0.2'
+version = '1.1.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -72,4 +73,13 @@ tasks.register('packagedTest', Test) {
         events 'passed', 'skipped', 'failed'
         exceptionFormat 'full'
     }
+}
+
+// Build-only payload for a leased, network-disabled Windows visual worker.
+tasks.register('stageVisualPreview', Copy) {
+    dependsOn jar, testClasses
+    into layout.buildDirectory.dir('visual-payload')
+    from(tasks.jar.archiveFile) { into 'lib' }
+    from(configurations.testRuntimeClasspath) { into 'lib' }
+    from(sourceSets.test.output) { into 'test-classes' }
 }

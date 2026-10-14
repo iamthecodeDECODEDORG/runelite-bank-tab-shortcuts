@@ -24,12 +24,14 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.config.ModifierlessKeybind;
+import net.runelite.client.ui.overlay.OverlayManager;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 public class BankTabShortcutsPluginTest
 {
@@ -38,6 +40,8 @@ public class BankTabShortcutsPluginTest
 	private final QueuedClientThread clientThread = new QueuedClientThread();
 	private BankTabShortcutsPlugin plugin;
 	private KeyManager keyManager;
+	private OverlayManager overlayManager;
+	private BankTabNumbersOverlay numbersOverlay;
 	private Object[] rebuildListener;
 	private boolean bankItemsHidden;
 	private boolean bankItemsPresent = true;
@@ -113,6 +117,10 @@ public class BankTabShortcutsPluginTest
 		constructor.setAccessible(true);
 		keyManager = constructor.newInstance(null, new EventBus());
 		inject(plugin, "keyManager", keyManager);
+		overlayManager = mock(OverlayManager.class);
+		numbersOverlay = new BankTabNumbersOverlay(client, new BankTabShortcutsConfig() {});
+		inject(plugin, "overlayManager", overlayManager);
+		inject(plugin, "numbersOverlay", numbersOverlay);
 		EventQueue.invokeAndWait(plugin::startUp);
 	}
 
@@ -122,6 +130,31 @@ public class BankTabShortcutsPluginTest
 		boolean loadedFromJar = BankTabShortcutsPlugin.class.getProtectionDomain()
 			.getCodeSource().getLocation().getPath().endsWith(".jar");
 		assertEquals(Boolean.getBoolean("bankTabShortcuts.packagedTest"), loadedFromJar);
+	}
+
+	@Test
+	public void overlayRegistersAndUnregistersWithPlugin() throws Exception
+	{
+		verify(overlayManager).add(numbersOverlay);
+		EventQueue.invokeAndWait(plugin::shutDown);
+		verify(overlayManager).remove(numbersOverlay);
+	}
+
+	@Test
+	public void zeroOpensAllEvenWhenThereAreNoNumberedTabs()
+	{
+		varbits.put(VarbitID.BANK_CURRENTTAB, 3);
+		refresh();
+		for (int keyCode : new int[]{KeyEvent.VK_0, KeyEvent.VK_NUMPAD0})
+		{
+			KeyEvent event = key(keyCode, InputEvent.CTRL_DOWN_MASK);
+			press(event);
+			assertTrue(event.isConsumed());
+			clientThread.drain();
+			assertEquals(0, displayedTab);
+		}
+		assertFalse(searching);
+		assertEquals(List.of("tab:0", "close-search", "rebuild", "tab:0", "close-search", "rebuild"), operations);
 	}
 
 	@Test
