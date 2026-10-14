@@ -4,8 +4,8 @@ import com.google.inject.Inject;
 import java.awt.event.KeyEvent;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.WidgetClosed;
-import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -49,29 +49,55 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 	@Inject
 	private KeyManager keyManager;
 
-	private volatile boolean bankOpen;
+	// Only immutable, client-thread-produced data crosses into the AWT key listener.
+	private volatile int availableTabs;
+	private volatile Object activation;
 
 	@Override
 	protected void startUp()
 	{
-		Widget bankItems = client.getWidget(InterfaceID.Bankmain.ITEMS);
-		bankOpen = bankItems != null && !bankItems.isHidden();
+		availableTabs = 0;
+		activation = new Object();
 		keyManager.registerKeyListener(this);
 	}
 
 	@Override
 	protected void shutDown()
 	{
+		activation = null;
+		availableTabs = 0;
 		keyManager.unregisterKeyListener(this);
-		bankOpen = false;
 	}
 
 	@Subscribe
-	public void onWidgetLoaded(WidgetLoaded event)
+	public void onClientTick(ClientTick event)
 	{
-		if (event.getGroupId() == InterfaceID.BANKMAIN)
+		if (activation == null)
 		{
-			bankOpen = true;
+			return;
+		}
+
+		try
+		{
+			int tabs = 0;
+			Widget bankItems = client.getWidget(InterfaceID.Bankmain.ITEMS);
+			if (bankItems != null && !bankItems.isHidden())
+			{
+				int[] counts = readTabItemCounts();
+				for (int i = 0; i < counts.length; i++)
+				{
+					if (counts[i] > 0)
+					{
+						tabs |= 1 << (i + 1);
+					}
+				}
+			}
+			availableTabs = tabs;
+		}
+		catch (RuntimeException exception)
+		{
+			availableTabs = 0;
+			LOG.error("BTS_BANK_STATE_FAILED", exception);
 		}
 	}
 
@@ -80,7 +106,7 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 	{
 		if (event.getGroupId() == InterfaceID.BANKMAIN)
 		{
-			bankOpen = false;
+			availableTabs = 0;
 		}
 	}
 
@@ -88,28 +114,26 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 	public void keyPressed(KeyEvent event)
 	{
 		int request = BankTabNavigator.requestFor(event);
-		if (request == BankTabNavigator.NONE || !bankOpen)
+		Object currentActivation = activation;
+		int tabs = availableTabs;
+		if (event.isConsumed() || request == BankTabNavigator.NONE || currentActivation == null || tabs == 0)
 		{
 			return;
 		}
 
-		Widget bankItems = client.getWidget(InterfaceID.Bankmain.ITEMS);
-		if (bankItems == null || bankItems.isHidden())
-		{
-			return;
-		}
-
-		int availableTarget = BankTabNavigator.targetFor(
-			request,
-			client.getVarbitValue(VarbitID.BANK_CURRENTTAB),
-			readTabItemCounts());
-		if (availableTarget == BankTabNavigator.NONE)
+		if (request >= 1 && request <= BankTabNavigator.TAB_COUNT && (tabs & (1 << request)) == 0)
 		{
 			return;
 		}
 
 		event.consume();
-		clientThread.invoke(() -> navigate(request));
+		clientThread.invoke(() ->
+		{
+			if (activation == currentActivation)
+			{
+				navigate(request);
+			}
+		});
 	}
 
 	@Override
@@ -136,7 +160,7 @@ public class BankTabShortcutsPlugin extends Plugin implements KeyListener
 	{
 		try
 		{
-			if (!bankOpen)
+			if (activation == null || availableTabs == 0)
 			{
 				return;
 			}

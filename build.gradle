@@ -12,7 +12,7 @@ repositories {
     mavenCentral()
 }
 
-def runeLiteVersion = '1.12.37'
+def runeLiteVersion = '1.13.1'
 def pluginMainClass = 'io.github.iamthecodedecoded.banktabshortcuts.BankTabShortcutsPluginTestClient'
 
 dependencies {
@@ -24,7 +24,7 @@ dependencies {
 }
 
 group = 'io.github.iamthecodedecoded'
-version = '1.0.0'
+version = '1.0.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -54,4 +54,17 @@ tasks.register('run', JavaExec) {
     mainClass = pluginMainClass
     jvmArgs '-ea'
     args '--developer-mode', '--debug'
+}
+
+// Exercise the shipped production classes, not build/classes/java/main.
+tasks.register('packagedTest', Test) {
+    dependsOn jar, testClasses
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = files(tasks.jar.archiveFile) + sourceSets.test.output + configurations.testRuntimeClasspath
+    systemProperty 'bankTabShortcuts.packagedTest', 'true'
+    useJUnit()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat 'full'
+    }
 }

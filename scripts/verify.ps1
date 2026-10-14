@@ -34,7 +34,7 @@ $java = Join-Path $env:JAVA_HOME 'bin\java.exe'
 $gradle = @('-classpath', $wrapperJar, 'org.gradle.wrapper.GradleWrapperMain')
 $arguments = @('-p', $pluginRoot, '--no-daemon', '--dependency-verification', 'strict')
 
-& $java @gradle @arguments clean test jar
+& $java @gradle @arguments clean test jar packagedTest
 if ($LASTEXITCODE -ne 0) {
     throw "BTS_VERIFY_GRADLE_FAILED: exit $LASTEXITCODE"
 }
