@@ -213,11 +213,14 @@ public class BankTabShortcutsPluginTest
 		refresh();
 		for (int tab = 1; tab <= 9; tab++)
 		{
-			KeyEvent event = key(KeyEvent.VK_0 + tab, InputEvent.CTRL_DOWN_MASK);
-			press(event);
-			assertTrue(event.isConsumed());
-			clientThread.drain();
-			assertEquals(tab, displayedTab);
+			for (int keyCode : new int[]{KeyEvent.VK_0 + tab, KeyEvent.VK_NUMPAD0 + tab})
+			{
+				KeyEvent event = key(keyCode, InputEvent.CTRL_DOWN_MASK);
+				press(event);
+				assertTrue(event.isConsumed());
+				clientThread.drain();
+				assertEquals(tab, displayedTab);
+			}
 		}
 	}
 

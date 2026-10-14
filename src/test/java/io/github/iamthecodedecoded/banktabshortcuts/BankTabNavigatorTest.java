@@ -21,6 +21,15 @@ public class BankTabNavigatorTest
 	}
 
 	@Test
+	public void mapsEveryNumpadShortcut()
+	{
+		for (int tab = 1; tab <= 9; tab++)
+		{
+			assertEquals(tab, BankTabNavigator.requestFor(key(KeyEvent.VK_NUMPAD0 + tab, InputEvent.CTRL_DOWN_MASK)));
+		}
+	}
+
+	@Test
 	public void recognizesOriginalNumberAfterAnotherListenerRemapsIt()
 	{
 		KeyEvent event = new KeyEvent(SOURCE, KeyEvent.KEY_PRESSED, 1L,
@@ -54,7 +63,7 @@ public class BankTabNavigatorTest
 	}
 
 	@Test
-	public void rejectsMissingOrExtraModifiersAndNumpadDigits()
+	public void rejectsMissingOrExtraModifiersAndNonNumericNavigation()
 	{
 		assertEquals(BankTabNavigator.NONE, BankTabNavigator.requestFor(key(KeyEvent.VK_1, 0)));
 		assertEquals(BankTabNavigator.NONE,
@@ -62,7 +71,9 @@ public class BankTabNavigatorTest
 		assertEquals(BankTabNavigator.NONE,
 			BankTabNavigator.requestFor(key(KeyEvent.VK_1, InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK)));
 		assertEquals(BankTabNavigator.NONE,
-			BankTabNavigator.requestFor(key(KeyEvent.VK_NUMPAD1, InputEvent.CTRL_DOWN_MASK)));
+			BankTabNavigator.requestFor(key(KeyEvent.VK_END, InputEvent.CTRL_DOWN_MASK)));
+		assertEquals(BankTabNavigator.NONE,
+			BankTabNavigator.requestFor(key(KeyEvent.VK_NUMPAD1, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK)));
 	}
 
 	@Test

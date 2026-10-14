@@ -49,6 +49,11 @@ test {
     }
 }
 
+tasks.withType(Test).configureEach {
+    // Test logging must never write into the user's live RuneLite directory.
+    systemProperty 'user.home', layout.buildDirectory.dir("test-home/${name}").get().asFile.absolutePath
+}
+
 tasks.register('run', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = pluginMainClass

@@ -38,6 +38,12 @@ final class BankTabNavigator
 		{
 			return keyCode - KeyEvent.VK_0;
 		}
+		if (!event.isShiftDown()
+			&& keyCode >= KeyEvent.VK_NUMPAD1
+			&& keyCode <= KeyEvent.VK_NUMPAD9)
+		{
+			return keyCode - KeyEvent.VK_NUMPAD0;
+		}
 
 		return NONE;
 	}
