@@ -14,6 +14,8 @@ bank tabs.
 The all-items view is intentionally not numbered. Cycling from all items enters tab 1 going forward
 or the highest existing tab going backward. The plugin ignores every shortcut while the bank is
 closed, while the bank's item area is hidden, or when the requested numbered tab does not exist.
+Number shortcuts use the top number row. Version `1.0.2` also recognizes those original keys when
+RuneLite's Key Remapping plugin rewrites them to F1-F9, so Remap F-keys can remain enabled.
 
 ## Safety And Scope
 

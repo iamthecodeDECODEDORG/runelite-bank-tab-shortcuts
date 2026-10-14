@@ -20,16 +20,23 @@ final class BankTabNavigator
 			return NONE;
 		}
 
-		if (event.getKeyCode() == KeyEvent.VK_TAB)
+		// Key Remapping rewrites keyCode; AWT preserves the original extended code.
+		int keyCode = event.getExtendedKeyCode();
+		if (keyCode == KeyEvent.VK_UNDEFINED)
+		{
+			keyCode = event.getKeyCode();
+		}
+
+		if (keyCode == KeyEvent.VK_TAB)
 		{
 			return event.isShiftDown() ? PREVIOUS : NEXT;
 		}
 
 		if (!event.isShiftDown()
-			&& event.getKeyCode() >= KeyEvent.VK_1
-			&& event.getKeyCode() <= KeyEvent.VK_9)
+			&& keyCode >= KeyEvent.VK_1
+			&& keyCode <= KeyEvent.VK_9)
 		{
-			return event.getKeyCode() - KeyEvent.VK_0;
+			return keyCode - KeyEvent.VK_0;
 		}
 
 		return NONE;

@@ -22,6 +22,8 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.config.ModifierlessKeybind;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -217,6 +219,50 @@ public class BankTabShortcutsPluginTest
 			clientThread.drain();
 			assertEquals(tab, displayedTab);
 		}
+	}
+
+	@Test
+	public void numberedShortcutSurvivesEarlierFKeyRemappingListener()
+	{
+		varbits.put(VarbitID.BANK_TAB_2, 1);
+		refresh();
+		keyManager.unregisterKeyListener(plugin);
+		keyManager.registerKeyListener(new KeyListener()
+		{
+			@Override
+			public void keyPressed(KeyEvent event)
+			{
+				if (new ModifierlessKeybind(KeyEvent.VK_2, 0).matches(event))
+				{
+					event.setKeyCode(KeyEvent.VK_F2);
+					event.setKeyChar(KeyEvent.CHAR_UNDEFINED);
+				}
+			}
+
+			@Override
+			public void keyTyped(KeyEvent event)
+			{
+			}
+
+			@Override
+			public void keyReleased(KeyEvent event)
+			{
+			}
+		});
+		keyManager.registerKeyListener(plugin);
+		KeyEvent event = new KeyEvent(new Canvas(), KeyEvent.KEY_PRESSED, 1L,
+			InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_2, KeyEvent.CHAR_UNDEFINED)
+		{
+			@Override
+			public int getExtendedKeyCode()
+			{
+				return KeyEvent.VK_2;
+			}
+		};
+		press(event);
+		clientThread.drain();
+		assertTrue(event.isConsumed());
+		assertEquals(2, displayedTab);
 	}
 
 	@Test

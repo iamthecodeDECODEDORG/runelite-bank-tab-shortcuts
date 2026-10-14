@@ -21,6 +21,30 @@ public class BankTabNavigatorTest
 	}
 
 	@Test
+	public void recognizesOriginalNumberAfterAnotherListenerRemapsIt()
+	{
+		KeyEvent event = new KeyEvent(SOURCE, KeyEvent.KEY_PRESSED, 1L,
+			InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_2, KeyEvent.CHAR_UNDEFINED)
+		{
+			@Override
+			public int getExtendedKeyCode()
+			{
+				return KeyEvent.VK_2;
+			}
+		};
+		// Key Remapping changes keyCode; AWT retains the native extended code.
+		event.setKeyCode(KeyEvent.VK_F2);
+		assertEquals(2, BankTabNavigator.requestFor(event));
+	}
+
+	@Test
+	public void doesNotTreatPhysicalFunctionKeyAsNumberedShortcut()
+	{
+		assertEquals(BankTabNavigator.NONE,
+			BankTabNavigator.requestFor(key(KeyEvent.VK_F2, InputEvent.CTRL_DOWN_MASK)));
+	}
+
+	@Test
 	public void mapsForwardAndBackwardCycling()
 	{
 		assertEquals(BankTabNavigator.NEXT,
