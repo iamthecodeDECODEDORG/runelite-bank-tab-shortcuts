@@ -30,6 +30,16 @@ mouse input or replace tab icons. Missing tabs and the New tab button have no la
 The renderer follows each native widget's canvas bounds, clips text inside the tab, and stays
 hidden when the bank or native tabs are hidden. It does not number Bank Tags sidebar tabs.
 
+## Remembering The Selected Tab
+
+Version `1.1.1` remembers the last successful keyboard selection when you close and reopen the
+bank, including All and either cycling direction. A later native tab click takes precedence.
+Missing tabs are not restored, and Bank Tags can still restore its own remembered tag.
+
+This is a local view preference for the current login, not a change to the game's saved tab.
+Logging out, hopping worlds, losing the connection, restarting RuneLite, or disabling the plugin
+clears it; the game's last clicked tab then applies. No simulated click or game action is sent.
+
 ## Safety And Scope
 
 The plugin registers a RuneLite key listener and optional overlay, reads the native bank interface and tab-count
@@ -37,14 +47,16 @@ varbits, selects a native tab, closes an active bank search input, and asks the 
 listener to rebuild the item view. RuneLite stores the three display settings through its own
 configuration API. The plugin does not send network requests, read or write files directly, inspect
 credentials or account profiles, synthesize operating-system input, invoke menu or packet actions,
-or automate gameplay. Every action begins with an explicit user keypress and only works inside the
-open bank interface.
+or automate gameplay. Navigation begins with an explicit user keypress inside the open bank;
+reopening the bank restores that chosen view locally.
 
 If RuneLite exposes the bank without its native rebuild listener, the plugin logs
 `BTS_BANK_REBUILD_LISTENER_MISSING` and leaves the current tab unchanged. Unexpected navigation
 failures are logged as `BTS_NAVIGATION_FAILED` with the requested tab.
 Bank-state refresh failures log `BTS_BANK_STATE_FAILED` and disable shortcut interception until
 the next successful client tick.
+Unexpected restore failures log `BTS_TAB_RESTORE_FAILED` and discard the local preference.
+Close-time state capture failures similarly log `BTS_TAB_CAPTURE_FAILED` and discard it.
 
 All bank widget and varbit access runs on RuneLite's client thread. Each client tick publishes an
 immutable tab-availability bitmask for the AWT keyboard listener; the listener only consumes valid
@@ -87,6 +99,9 @@ RuneLite `KeyManager` on AWT's event-dispatch thread.
 There is no existing plugin state to migrate. Plugin Hub users receive the update after the manifest
 update is accepted. These tests exercise the threading and navigation contract using a simulated
 bank; a logged-in live-bank test remains a separate check.
+
+The [tab-reopening regression report](docs/tab-memory-regression.md) records the native script
+path, server-resync reproduction, lifecycle coverage, and remaining live-client validation.
 
 For a private RuneLite development client:
 

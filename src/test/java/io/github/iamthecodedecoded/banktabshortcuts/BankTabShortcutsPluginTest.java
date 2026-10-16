@@ -14,13 +14,17 @@ import java.util.List;
 import java.util.Map;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
+import net.runelite.api.GameState;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.config.ModifierlessKeybind;
@@ -38,6 +42,7 @@ public class BankTabShortcutsPluginTest
 	private final Map<Integer, Integer> varbits = new HashMap<>();
 	private final List<String> operations = new ArrayList<>();
 	private final QueuedClientThread clientThread = new QueuedClientThread();
+	private final EventBus eventBus = new EventBus();
 	private BankTabShortcutsPlugin plugin;
 	private KeyManager keyManager;
 	private OverlayManager overlayManager;
@@ -122,6 +127,212 @@ public class BankTabShortcutsPluginTest
 		inject(plugin, "overlayManager", overlayManager);
 		inject(plugin, "numbersOverlay", numbersOverlay);
 		EventQueue.invokeAndWait(plugin::startUp);
+		eventBus.register(plugin);
+	}
+
+	@Test
+	public void cachedHiddenWidgetsBetweenCloseAndOpenDoNotEraseRememberedTab()
+	{
+		selectTabFive();
+		closeBank();
+		bankItemsHidden = true;
+		varbits.put(VarbitID.BANK_CURRENTTAB, 3);
+		refresh();
+		bankItemsHidden = false;
+		fireScript(ScriptID.BANKMAIN_INIT);
+		assertEquals(5, (int) varbits.get(VarbitID.BANK_CURRENTTAB));
+	}
+
+	@Test
+	public void bankTagsDefaultPriorityRestorationStillWins()
+	{
+		selectTabFive();
+		eventBus.register(new Object()
+		{
+			@Subscribe
+			public void onScriptPreFired(ScriptPreFired event)
+			{
+				if (event.getScriptId() == ScriptID.BANKMAIN_INIT)
+				{
+					assertEquals(5, (int) varbits.get(VarbitID.BANK_CURRENTTAB));
+					// Mirrors Bank Tags' default-priority remembered-tag initialization.
+					varbits.put(VarbitID.BANK_CURRENTTAB, 0);
+				}
+			}
+		});
+		reopenWithServerTab(3);
+		assertEquals(0, displayedTab);
+	}
+
+	@Test
+	public void queuedOldBankShortcutCannotReplaceRememberedTabAfterReopening()
+	{
+		selectTabFive();
+		press(key(KeyEvent.VK_3, InputEvent.CTRL_DOWN_MASK));
+		reopenWithServerTab(3);
+		assertEquals(5, displayedTab);
+	}
+
+	@Test
+	public void anotherViewImmediatelyFollowedByCloseDoesNotRestoreStaleTab()
+	{
+		selectTabFive();
+		varbits.put(VarbitID.BANK_CURRENTTAB, 0);
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+	}
+
+	@Test
+	public void failedShortcutDoesNotRememberItsRequestedTab()
+	{
+		varbits.put(VarbitID.BANK_TAB_5, 4);
+		rebuildListener = null;
+		refresh();
+		press(key(KeyEvent.VK_5, InputEvent.CTRL_DOWN_MASK));
+		clientThread.drain();
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+	}
+
+	@Test
+	public void keyboardTabSurvivesServerResyncOnRepeatedBankReopens()
+	{
+		varbits.put(VarbitID.BANK_TAB_3, 4);
+		varbits.put(VarbitID.BANK_TAB_5, 4);
+		varbits.put(VarbitID.BANK_CURRENTTAB, 3);
+		refresh();
+		press(key(KeyEvent.VK_5, InputEvent.CTRL_DOWN_MASK));
+		clientThread.drain();
+		assertEquals(5, displayedTab);
+		for (int i = 0; i < 3; i++)
+		{
+			reopenWithServerTab(3);
+			assertEquals(5, displayedTab);
+		}
+	}
+
+	@Test
+	public void allAndBothCycleDirectionsAreRemembered()
+	{
+		varbits.put(VarbitID.BANK_TAB_3, 4);
+		varbits.put(VarbitID.BANK_TAB_5, 4);
+		varbits.put(VarbitID.BANK_CURRENTTAB, 3);
+		refresh();
+		press(key(KeyEvent.VK_TAB, InputEvent.CTRL_DOWN_MASK));
+		clientThread.drain();
+		reopenWithServerTab(3);
+		assertEquals(5, displayedTab);
+		press(key(KeyEvent.VK_TAB, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK));
+		clientThread.drain();
+		reopenWithServerTab(5);
+		assertEquals(3, displayedTab);
+		press(key(KeyEvent.VK_NUMPAD0, InputEvent.CTRL_DOWN_MASK));
+		clientThread.drain();
+		reopenWithServerTab(3);
+		assertEquals(0, displayedTab);
+	}
+
+	@Test
+	public void laterNativeClickTakesPrecedenceEvenBeforeNextTick()
+	{
+		selectTabFive();
+		// Tab icons, All, separator headings and potion storage share native script 504.
+		fireScript(504);
+		varbits.put(VarbitID.BANK_CURRENTTAB, 3);
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+	}
+
+	@Test
+	public void removedTabIsNotResurrected()
+	{
+		selectTabFive();
+		varbits.put(VarbitID.BANK_TAB_5, 0);
+		reopenWithServerTab(0);
+		assertEquals(0, displayedTab);
+		varbits.put(VarbitID.BANK_TAB_5, 2);
+		reopenWithServerTab(0);
+		assertEquals(0, displayedTab);
+	}
+
+	@Test
+	public void otherViewSelectionAndOpenBankReinitializationAreNotOverridden()
+	{
+		selectTabFive();
+		varbits.put(VarbitID.BANK_CURRENTTAB, 0);
+		fireScript(ScriptID.BANKMAIN_INIT);
+		assertEquals(0, (int) varbits.get(VarbitID.BANK_CURRENTTAB));
+		refresh();
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+	}
+
+	@Test
+	public void logoutHopAndDisableDiscardRememberedTab() throws Exception
+	{
+		for (GameState state : new GameState[]{GameState.LOGIN_SCREEN, GameState.HOPPING, GameState.CONNECTION_LOST})
+		{
+			selectTabFive();
+			GameStateChanged event = new GameStateChanged();
+			event.setGameState(state);
+			clientThread.invoke(() -> eventBus.post(event));
+			clientThread.drain();
+			reopenWithServerTab(3);
+			assertEquals(3, displayedTab);
+		}
+		selectTabFive();
+		EventQueue.invokeAndWait(plugin::shutDown);
+		EventQueue.invokeAndWait(plugin::startUp);
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+	}
+
+	@Test
+	public void noKeyboardSelectionLeavesNativeRememberingUntouched()
+	{
+		varbits.put(VarbitID.BANK_TAB_3, 4);
+		reopenWithServerTab(3);
+		assertEquals(3, displayedTab);
+		assertTrue(operations.isEmpty());
+	}
+
+	private void selectTabFive()
+	{
+		varbits.put(VarbitID.BANK_TAB_3, 4);
+		varbits.put(VarbitID.BANK_TAB_5, 4);
+		refresh();
+		press(key(KeyEvent.VK_5, InputEvent.CTRL_DOWN_MASK));
+		clientThread.drain();
+	}
+
+	private void fireScript(int id)
+	{
+		clientThread.invoke(() -> eventBus.post(new ScriptPreFired(id)));
+		clientThread.drain();
+	}
+
+	private void reopenWithServerTab(int serverTab)
+	{
+		closeBank();
+		// Native bank open resyncs server state before script 274 builds the view.
+		varbits.put(VarbitID.BANK_CURRENTTAB, serverTab);
+		fireScript(ScriptID.BANKMAIN_INIT);
+		displayedTab = varbits.get(VarbitID.BANK_CURRENTTAB);
+		refresh();
+	}
+
+	private void closeBank()
+	{
+		// A native close can happen before already-queued AWT work is drained.
+		clientThread.running = true;
+		try
+		{
+			eventBus.post(new WidgetClosed(InterfaceID.BANKMAIN, 0, false));
+		}
+		finally
+		{
+			clientThread.running = false;
+		}
 	}
 
 	@Test
@@ -341,8 +552,7 @@ public class BankTabShortcutsPluginTest
 		refresh();
 		press(key(KeyEvent.VK_1, InputEvent.CTRL_DOWN_MASK));
 		bankItemsPresent = false;
-		WidgetClosed event = new WidgetClosed(InterfaceID.BANKMAIN, 0, false);
-		plugin.onWidgetClosed(event);
+		closeBank();
 		clientThread.drain();
 		assertTrue(operations.isEmpty());
 	}
